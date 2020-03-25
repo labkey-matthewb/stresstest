@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "whoami",
+  "type": "object",
+  "properties": {
+    "displayName": {"type": "string"},
+    "success": {"type": "boolean"},
+    "id": {"type": "number"},
+    "CSRF": {"type": "string"},
+    "email": {"type": "string"}
+  }
+}

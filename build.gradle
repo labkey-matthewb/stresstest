@@ -1,0 +1,23 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+mainClassName = 'stresstest.Main'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    runtime 'io.rest-assured:rest-assured:4.3.0'
+    implementation 'io.rest-assured:rest-assured:4.3.0'
+    runtime 'io.rest-assured:json-schema-validator:4.3.0'
+    implementation 'io.rest-assured:json-schema-validator:4.3.0'
+}
+
+jar {
+    manifest { attributes("Main-Class": 'stresstest.Main') }
+}
+
+run {
+    standardInput = System.in
+}
