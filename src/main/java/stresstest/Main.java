@@ -1,5 +1,10 @@
 package stresstest;
 
+import io.restassured.response.ValidatableResponse;
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -46,7 +51,6 @@ public class Main
 		}
 	}
 
-
 	void labkeyLogout(RestSession s)
 	{
 		var body = s.get("/login-whoami.api").body();
@@ -68,17 +72,26 @@ public class Main
 		s.get("/login-whoami.api").then().body("email", equalTo(email));
 	}
 
+	void checkLabKeyEmail(RestSession s, String expected)
+	{
+		s.get("/login-whoami.api").then()
+			.body(matchesJsonSchemaInClasspath("whoami-schema.json"))
+			.body("email", equalTo(expected));
+	}
+
 	public void run()
 	{
 		Properties properties = getProperties(true);
-		RestSession s = RestSession.createLabKeySession(properties);
-		var r = s.get("/login-whoami.api");
-		r.then().assertThat().body(matchesJsonSchemaInClasspath("whoami-schema.json"));
-		r.then()
-				.body("id", equalTo(0))
-				.body("email", equalTo("guest"));
-		labkeyLogin(s, properties.getProperty("email"), properties.getProperty("password"));
-		labkeyLogout(s);
+		RestSession s1 = RestSession.createLabKeySession(properties);
+		RestSession s2 = RestSession.createLabKeySession(properties);
+		checkLabKeyEmail(s1, "guest");
+		checkLabKeyEmail(s2, "guest");
+		labkeyLogin(s1, properties.getProperty("email"), properties.getProperty("password"));
+		checkLabKeyEmail(s1, properties.getProperty("email"));
+		checkLabKeyEmail(s2, "guest");
+		labkeyLogout(s1);
+		checkLabKeyEmail(s1, "guest");
+		checkLabKeyEmail(s2, "guest");
 		System.out.println("SUCCESSS!");
 	}
 
