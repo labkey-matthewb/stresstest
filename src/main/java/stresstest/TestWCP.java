@@ -12,6 +12,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class TestWCP
 {
+    final boolean verbose = true;
     final RestSession s;
     final HashMap<String,String> vars = new HashMap<>();
 
@@ -33,6 +34,14 @@ public class TestWCP
         return s.given().when();
     }
 
+
+    void verbose(String v)
+    {
+        if (verbose)
+            System.out.println(v);
+    }
+
+
     // silent parameter is used to silently skip test without required vars
     // useful for calling APIs in random order
 
@@ -51,7 +60,10 @@ public class TestWCP
         {
             if (isBlank(vars.get("applicationId")) ||
                 isBlank(vars.get("orgId")))
+            {
+                verbose("skipping getStudyList");
                 return null;
+            }
         }
         final var ret = given()
                 .header("applicationId",vars.get("applicationId"))
@@ -68,12 +80,10 @@ public class TestWCP
             var studyId = ret.body().jsonPath().getString("studies[0].studyId");
             if (isNotBlank(studyId))
             {
-                System.err.println("studyId=" + studyId);
+                verbose("studyId=" + studyId);
                 vars.put("studyId",studyId);
             }
         }
-        System.err.println("studyId="+vars.get("studyId"));
-
         return ret;
     }
 
@@ -90,7 +100,7 @@ public class TestWCP
         String consentVersion = ret.body().jsonPath().getString("consent.version");
         if (isNotBlank(consentVersion))
         {
-            System.err.println("consentVersion="+consentVersion);
+            verbose("consentVersion="+consentVersion);
             vars.put("consentVersion", consentVersion);
         }
 
@@ -102,7 +112,10 @@ public class TestWCP
         if (silent)
         {
             if (isBlank(vars.get("studyId")) || isBlank(vars.get("consentVersion")))
+            {
+                verbose("skipping getConsentDocument");
                 return null;
+            }
         }
         return given()
                 .param("studyId",vars.get("studyId"))
@@ -117,7 +130,10 @@ public class TestWCP
     private ExtractableResponse<Response> getResourcesForStudy(boolean silent)
     {
         if (silent && isBlank(vars.get("studyId")))
+        {
+            verbose("skipping getResourcesForStudy");
             return null;
+        }
         return given()
                 .param("studyId",vars.get("studyId"))
             .when()
@@ -153,8 +169,8 @@ public class TestWCP
         {
             String activityId = ret.body().jsonPath().getString("activities[0].activityId");
             String activityVersion = ret.body().jsonPath().getString("activities[0].activityVersion");
-            System.err.println("activityId="+activityId);
-            System.err.println("activityVersion="+activityVersion);
+            verbose("activityId="+activityId);
+            verbose("activityVersion="+activityVersion);
             vars.put("activityId", activityId);
             vars.put("activityVersion", activityVersion);
         }
@@ -165,10 +181,8 @@ public class TestWCP
 
     public void apiTest()
     {
-        // gatewayInfo
         getGatewayAppResourcesInfo(false);
 
-        // studyList
         getStudyList(false);
 
         getResourcesForStudy(false);
@@ -234,6 +248,6 @@ public class TestWCP
     {
         apiTest();
         randomApiTest();
-        System.out.println("success");
+        System.out.println("TestWCP: success");
     }
 }
