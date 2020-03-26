@@ -1,11 +1,11 @@
 package stresstest;
 
-import io.restassured.filter.log.ResponseLoggingFilter;
+import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.function.Function;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
@@ -23,34 +23,49 @@ public class TestWCP
             vars.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
     }
 
-    public void apiTest()
+    RequestSpecification given()
     {
-        Response response;
+        return s.given();
+    }
 
-        // gatewayInfo
+    RequestSpecification when()
+    {
+        return s.given().when();
+    }
 
-        s.given()
-            .when()
+    // silent parameter is used to silently skip test without required vars
+    // useful for calling APIs in random order
+
+    private ExtractableResponse<Response> getGatewayAppResourcesInfo(boolean silent)
+    {
+        return when()
                 .get("/gatewayInfo")
             .then()
-                .statusCode(200);
+                .statusCode(200)
+            .extract();
+    }
 
-        // studyList
-
-        response = s
-            .given()
+    private ExtractableResponse<Response> getStudyList(boolean silent)
+    {
+        if (silent)
+        {
+            if (isBlank(vars.get("applicationId")) ||
+                isBlank(vars.get("orgId")))
+                return null;
+        }
+        final var ret = given()
                 .header("applicationId",vars.get("applicationId"))
                 .header("orgId",vars.get("orgId"))
             .when()
-                .get("/studyList");
-        response
+                .get("/studyList")
             .then()
-                .statusCode(200);
+                .statusCode(200)
+            .extract();
 
         // if we don't have a studyId grab the first one
         if (isBlank(vars.get("studyId")))
         {
-            var studyId = response.body().jsonPath().getString("studies[0].studyId");
+            var studyId = ret.body().jsonPath().getString("studies[0].studyId");
             if (isNotBlank(studyId))
             {
                 System.err.println("studyId=" + studyId);
@@ -59,68 +74,166 @@ public class TestWCP
         }
         System.err.println("studyId="+vars.get("studyId"));
 
-        // studyInfo
+        return ret;
+    }
 
-        s.given()
+    private ExtractableResponse<Response> getEligibilityConsentMetadata(boolean silent)
+    {
+        final var ret = given()
                 .param("studyId",vars.get("studyId"))
             .when()
-                .get("/studyInfo")
+                .get("/eligibilityConsent")
             .then()
-                .statusCode(200);
+                .statusCode(200)
+            .extract();
 
-        // eligibilityConsent
-
-        response = s
-            .given()
-                .param("studyId",vars.get("studyId"))
-            .when()
-                .get("/eligibilityConsent");
-        response
-            .then()
-                .statusCode(200);
-
-        String consentVersion = response.body().jsonPath().getString("consent.version");
+        String consentVersion = ret.body().jsonPath().getString("consent.version");
         if (isNotBlank(consentVersion))
         {
             System.err.println("consentVersion="+consentVersion);
             vars.put("consentVersion", consentVersion);
         }
 
-        // activityList
+        return ret;
+    }
 
-        response = s
-            .given()
+    private ExtractableResponse<Response> getConsentDocument(boolean silent)
+    {
+        if (silent)
+        {
+            if (isBlank(vars.get("studyId")) || isBlank(vars.get("consentVersion")))
+                return null;
+        }
+        return given()
+                .param("studyId",vars.get("studyId"))
+                .param("consentVersion",vars.get("consentVersion"))
+            .when()
+                .get("/consentDocument")
+            .then()
+                .statusCode(200)
+            .extract();
+    }
+
+    private ExtractableResponse<Response> getResourcesForStudy(boolean silent)
+    {
+        if (silent && isBlank(vars.get("studyId")))
+            return null;
+        return given()
                 .param("studyId",vars.get("studyId"))
             .when()
-                .get("/activityList");
-        response
+                .get("/resources")
             .then()
-                .statusCode(200);
+                .statusCode(200)
+            .extract();
+    }
+
+
+    private ExtractableResponse<Response> getStudyInfo(boolean silent)
+    {
+        return given()
+                .param("studyId", vars.get("studyId"))
+            .when()
+                .get("/studyInfo")
+            .then()
+                .statusCode(200)
+            .extract();
+    }
+
+    private ExtractableResponse<Response> getActivityList(boolean silent)
+    {
+        var ret = given()
+                .param("studyId",vars.get("studyId"))
+            .when()
+                .get("/activityList")
+            .then()
+                .statusCode(200)
+            .extract();
 
         if (isBlank(vars.get("activityId")) || isBlank(vars.get("activityVersion")))
         {
-            String activityId = response.body().jsonPath().getString("activities[0].activityId");
-            String activityVersion = response.body().jsonPath().getString("activities[0].activityVersion");
+            String activityId = ret.body().jsonPath().getString("activities[0].activityId");
+            String activityVersion = ret.body().jsonPath().getString("activities[0].activityVersion");
             System.err.println("activityId="+activityId);
             System.err.println("activityVersion="+activityVersion);
             vars.put("activityId", activityId);
             vars.put("activityVersion", activityVersion);
         }
 
-        // consentDocument
+        return ret;
+    }
 
-        s.given()
-                .param("studyId",vars.get("studyId"))
-                .param("consentVersion",vars.get("consentVersion"))
-            .when()
-                .get("/consentDocument")
-            .then()
-                .statusCode(200);
+
+    public void apiTest()
+    {
+        // gatewayInfo
+        getGatewayAppResourcesInfo(false);
+
+        // studyList
+        getStudyList(false);
+
+        getResourcesForStudy(false);
+
+        getStudyInfo(false);
+
+        getEligibilityConsentMetadata(false);
+
+        getActivityList(false);
+
+        getConsentDocument(false);
+
+        // activity
+        //TODO
+
+        // studyDashboard
+        //TODO
+
+        // termsPolicy
+        //TODO
+
+        // notifications
+        //TODO
+
+        // feedback
+        //TODO
+
+        // contactUs
+        //TODO
+
+        // appUpdates
+        //TODO
+
+        // studyUpdates
+        //TODO
+
+        System.out.println("apiTest: passed");
+    }
+
+    public void randomApiTest()
+    {
+        List<Function<Boolean,ExtractableResponse<Response>>> fn = Arrays.asList(
+                this::getResourcesForStudy,
+                this::getConsentDocument,
+                this::getActivityList,
+                this::getEligibilityConsentMetadata,
+                this::getGatewayAppResourcesInfo,
+                this::getStudyInfo,
+                this::getStudyList
+        );
+        long start = System.currentTimeMillis();
+        var r = new Random();
+        for (int i=0 ; i<100 ; i++)
+        {
+            fn.get(r.nextInt(fn.size())).apply(true);
+            try {Thread.sleep(10);} catch (InterruptedException x) { /* pass */ }
+        }
+        System.out.println("randomApiTest: 100 api calls");
+        System.out.println("randomApiTest: passed in " + (System.currentTimeMillis()-start) + "ms");
     }
 
     public void run()
     {
         apiTest();
+        randomApiTest();
         System.out.println("success");
     }
 }
