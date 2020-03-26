@@ -18,9 +18,9 @@ import static org.hamcrest.Matchers.equalTo;
 
 public class Main
 {
-	final File stressTestProperties = new File("stresstest.properties");
+	static final File stressTestProperties = new File("stresstest.properties");
 
-	Properties getProperties(boolean interactive)
+	static Properties getProperties(boolean interactive)
 	{
  		try
 		{
@@ -68,7 +68,7 @@ public class Main
 			return;
 		if (0 != body.jsonPath().getInt("id"))
 			s.post("/login-logoutApi.api");
-		s.with().params("email",email,"password",password).post("/login-loginApi.api").body().print();
+		s.with().params("email",email,"password",password).post("/login-loginApi.api");
 		s.get("/login-whoami.api").then().body("email", equalTo(email));
 	}
 
@@ -79,9 +79,8 @@ public class Main
 			.body("email", equalTo(expected));
 	}
 
-	public void run()
+	public void run(Properties properties)
 	{
-		Properties properties = getProperties(true);
 		RestSession s1 = RestSession.createLabKeySession(properties);
 		RestSession s2 = RestSession.createLabKeySession(properties);
 		checkLabKeyEmail(s1, "guest");
@@ -97,6 +96,7 @@ public class Main
 
 	public static void main(String[] args)
 	{
-		new Main().run();
+		Properties properties = getProperties(true);
+		new TestWCP(properties).run();
 	}
 }

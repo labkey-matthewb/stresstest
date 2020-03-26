@@ -3,6 +3,8 @@ package stresstest;
 import io.restassured.RestAssured;
 import io.restassured.filter.Filter;
 import io.restassured.filter.FilterContext;
+import io.restassured.filter.log.RequestLoggingFilter;
+import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.filter.session.SessionFilter;
 import io.restassured.http.Cookie;
 import io.restassured.http.Header;
@@ -11,10 +13,14 @@ import io.restassured.specification.FilterableRequestSpecification;
 import io.restassured.specification.FilterableResponseSpecification;
 import io.restassured.specification.RequestSpecification;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.commons.lang3.StringUtils.defaultString;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
@@ -36,6 +42,7 @@ public class RestSession
         port = Integer.parseInt(props.getProperty("port", "8080"));
         basePath = props.getProperty("basePath", "");
         filters.add(new SessionFilter());
+        System.err.println("URI: " + baseURI + ":" + port + basePath);
     }
 
     public static RestSession createSession(Properties props)
@@ -50,6 +57,22 @@ public class RestSession
         var s = new RestSession(props);
         s.filters.add(new CsrfFilter());
         return s;
+    }
+
+    public static RestSession createBasicAuth(Properties props, String username_, String password_)
+    {
+        final String username = defaultString(username_, props.getProperty("username"));
+        final String password = defaultString(password_, props.getProperty("password"));
+        final Header header = new Header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8)));
+        return new RestSession(props)
+        {
+            @Override
+            public RequestSpecification given()
+            {
+//                return super.given().auth().basic(username,password);
+                return super.given().header(header);
+            }
+        };
     }
 
     //
@@ -70,10 +93,17 @@ public class RestSession
 
         var request = new RequestSpecificationWrapper(RestAssured.given());
         request.filters(filters);
+        // for verbose logging
+        //request.filters(new RequestLoggingFilter(), new ResponseLoggingFilter());
         return request;
     }
 
     public Response get(String path, Object... pathParams)
+    {
+        return given().get(path, pathParams);
+    }
+
+    public Response get(String path, Map<String, ?> pathParams)
     {
         return given().get(path, pathParams);
     }
