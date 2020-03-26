@@ -333,10 +333,9 @@ public class TestWCP
         @Override
         public Object call() throws Exception
         {
-            long t = System.currentTimeMillis();
             var res = fn.apply(true);
             if (null != res)
-                stats.update(System.currentTimeMillis()-t);
+                stats.update(res.time());
             return null;
         }
     }
