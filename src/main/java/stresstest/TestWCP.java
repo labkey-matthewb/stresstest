@@ -77,17 +77,25 @@ public class TestWCP
                 .statusCode(200)
             .extract();
 
-        // if we don't have a studyId grab the first one
+        // if we don't have a studyId grab a random
         if (isBlank(vars.get("studyId")))
         {
-            var studyId = ret.body().jsonPath().getString("studies[0].studyId");
-            var studyVersion = ret.body().jsonPath().getString("studies[0].studyVersion");
-            if (isNotBlank(studyId))
+//            var studyId = ret.body().jsonPath().getString("studies[0].studyId");
+//            var studyVersion = ret.body().jsonPath().getString("studies[0].studyVersion");
+            var len = ret.body().jsonPath().getInt("studies.size()");
+            if (len > 0)
             {
+                int r = new Random().nextInt(len);
+                var studyId = ret.body().jsonPath().getString("studies["+ r +"].studyId");
+                var studyVersion = ret.body().jsonPath().getString("studies["+ r +"].studyVersion");
                 verbose("studyId=" + studyId);
                 verbose("studyVersion=" + studyVersion);
-                vars.put("studyId",studyId);
+                vars.put("studyId", studyId);
                 vars.put("studyVersion", studyVersion);
+                // clear dependent params
+                vars.remove("activityId");
+                vars.remove("activityVersion");
+                vars.remove("consentVersion");
             }
         }
         return ret;
