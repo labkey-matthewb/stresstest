@@ -4,7 +4,11 @@ import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import static org.apache.commons.lang3.StringUtils.*;
@@ -314,40 +318,78 @@ public class TestWCP
         System.out.println("apiTest: passed");
     }
 
-    public void randomApiTest(int count)
+    // custom class because the generics are out of control
+    private class StatsWrapper implements Callable
     {
-        List<Function<Boolean,ExtractableResponse<Response>>> fn = Arrays.asList(
-                this::getActivityList,
-                this::getAppUpdates,
-                this::getConsentDocument,
-                // this::postContactUs,
-                this::getEligibilityConsentMetadata,
-                //this::postFeedback,
-                this::getGatewayAppResourcesInfo,
-                this::getNotifications,
-                this::getResourcesForStudy,
-                this::getStudyActivityMetadata,
-                this::getStudyDashboardInfo,
-                this::getStudyInfo,
-                this::getStudyList,
-                this::getStudyUpdates,
-                this::getTermsPolicy
-        );
+        final Function<Boolean,ExtractableResponse<Response>> fn;
+        final Stats stats;
+
+        StatsWrapper(Function<Boolean,ExtractableResponse<Response>> fn, String name)
+        {
+            this.fn = fn;
+            this.stats = new Stats(name);
+        }
+
+        @Override
+        public Object call() throws Exception
+        {
+            long t = System.currentTimeMillis();
+            var res = fn.apply(true);
+            if (null != res)
+                stats.update(System.currentTimeMillis()-t);
+            return null;
+        }
+    }
+
+    public void randomApiTest(int count) throws Exception
+    {
+        StatsWrapper[] apis = new StatsWrapper[]
+        {
+            new StatsWrapper(this::getActivityList,"getActivityList"),
+            new StatsWrapper(this::getAppUpdates,"getAppUpdates"),
+            new StatsWrapper(this::getConsentDocument,"getConsentDocument"),
+            // this::postContactUs,
+            new StatsWrapper(this::getEligibilityConsentMetadata,"getEligibilityConsentMetadata"),
+            //this::postFeedback,
+            new StatsWrapper(this::getGatewayAppResourcesInfo,"getGatewayAppResourcesInfo"),
+            new StatsWrapper(this::getNotifications,"getNotifications"),
+            new StatsWrapper(this::getResourcesForStudy,"getResourcesForStudy"),
+            new StatsWrapper(this::getStudyActivityMetadata,"getStudyActivityMetadata"),
+            new StatsWrapper(this::getStudyDashboardInfo,"getStudyDashboardInfo"),
+            new StatsWrapper(this::getStudyInfo,"getStudyInfo"),
+            new StatsWrapper(this::getStudyList,"getStudyList"),
+            new StatsWrapper(this::getStudyUpdates,"getStudyUpdates"),
+            new StatsWrapper(this::getTermsPolicy, "getTermsPolicy")
+        };
+
         long start = System.currentTimeMillis();
+        long pauseTime = 10;
+        int callCount = 0;
         var r = new Random();
         for (int i=0 ; i<count ; i++)
         {
-            fn.get(r.nextInt(fn.size())).apply(true);
-            try {Thread.sleep(10);} catch (InterruptedException x) { /* pass */ }
+            apis[r.nextInt(apis.length)].call();
         }
-        System.out.println("randomApiTest: " + count + " api calls");
-        System.out.println("randomApiTest: passed in " + (System.currentTimeMillis()-start) + "ms");
+
+        long callTime = (System.currentTimeMillis() - start - (pauseTime - callCount));
+        System.out.println("randomApiTest: " + count + " api calls in " + callTime + "ms");
+        //System.out.println("randomApiTest: avg call time = " + (callTime / callCount));
+        for (StatsWrapper api : apis)
+            System.out.println(api.stats.toString());
     }
 
     public void run()
     {
-        apiTest();
-        randomApiTest(100);
-        System.out.println("TestWCP: success");
+        try
+        {
+            apiTest();
+            randomApiTest(100);
+            System.out.println("TestWCP: success");
+        }
+        catch (Exception x)
+        {
+            x.printStackTrace();
+            System.exit(1);
+        }
     }
 }
