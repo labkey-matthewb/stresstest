@@ -29,16 +29,24 @@ public class TestWCP
 
         // gatewayInfo
 
-        s.get("/gatewayInfo")
-            .then().assertThat().statusCode(200);
+        s.given()
+            .when()
+                .get("/gatewayInfo")
+            .then()
+                .statusCode(200);
 
         // studyList
 
-        response = s.with()
-            .header("applicationId",vars.get("applicationId"))
-            .header("orgId",vars.get("orgId"))
-          .get("/studyList");
-        response.then().assertThat().statusCode(200);
+        response = s
+            .given()
+                .header("applicationId",vars.get("applicationId"))
+                .header("orgId",vars.get("orgId"))
+            .when()
+                .get("/studyList");
+        response
+            .then()
+                .statusCode(200);
+
         // if we don't have a studyId grab the first one
         if (isBlank(vars.get("studyId")))
         {
@@ -49,20 +57,28 @@ public class TestWCP
                 vars.put("studyId",studyId);
             }
         }
+        System.err.println("studyId="+vars.get("studyId"));
 
         // studyInfo
 
-        s.with()
-            .param("studyId",vars.get("studyId"))
-          .get("/studyInfo")
-            .then().assertThat().statusCode(200);
+        s.given()
+                .param("studyId",vars.get("studyId"))
+            .when()
+                .get("/studyInfo")
+            .then()
+                .statusCode(200);
 
         // eligibilityConsent
 
-        response = s.with()
-            .param("studyId",vars.get("studyId"))
-          .get("/eligibilityConsent");
-        response.then().statusCode(200);
+        response = s
+            .given()
+                .param("studyId",vars.get("studyId"))
+            .when()
+                .get("/eligibilityConsent");
+        response
+            .then()
+                .statusCode(200);
+
         String consentVersion = response.body().jsonPath().getString("consent.version");
         if (isNotBlank(consentVersion))
         {
@@ -72,10 +88,14 @@ public class TestWCP
 
         // activityList
 
-        response = s.with()
-            .param("studyId",vars.get("studyId"))
-          .get("/activityList");
-        response.then().statusCode(200);
+        response = s
+            .given()
+                .param("studyId",vars.get("studyId"))
+            .when()
+                .get("/activityList");
+        response
+            .then()
+                .statusCode(200);
 
         if (isBlank(vars.get("activityId")) || isBlank(vars.get("activityVersion")))
         {
@@ -89,11 +109,13 @@ public class TestWCP
 
         // consentDocument
 
-        s.with()
-            .param("studyId",vars.get("studyId"))
-            .param("consentVersion",vars.get("consentVersion"))
-          .get("/consentDocument")
-            .then().statusCode(200);
+        s.given()
+                .param("studyId",vars.get("studyId"))
+                .param("consentVersion",vars.get("consentVersion"))
+            .when()
+                .get("/consentDocument")
+            .then()
+                .statusCode(200);
     }
 
     public void run()
