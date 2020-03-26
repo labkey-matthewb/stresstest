@@ -7,8 +7,7 @@ import io.restassured.specification.RequestSpecification;
 import java.util.*;
 import java.util.function.Function;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.*;
 
 public class TestWCP
 {
@@ -245,14 +244,14 @@ public class TestWCP
 
     private ExtractableResponse<Response> getAppUpdates(boolean silent)
     {
-        if (silent && (isBlank(vars.get("app")) || isBlank(vars.get("appVersion"))))
+        if (silent && isBlank(vars.get("applicationId")))
         {
             verbose("skipping getAppUpdates");
             return null;
         }
         return given()
-                .param("app", vars.get("app"))
-                .param("appVersion", vars.get("appVersion"))
+                .param("app", vars.get("applicationId"))
+                .param("appVersion", defaultString(vars.get("appVersion"),"1.0"))
             .when()
                 .get("/appUpdates")
             .then()
@@ -262,14 +261,14 @@ public class TestWCP
 
     private ExtractableResponse<Response> getStudyUpdates(boolean silent)
     {
-        if (silent && (isBlank(vars.get("studyId")) || isBlank(vars.get("studyVersion"))))
+        if (silent && isBlank(vars.get("studyId")))
         {
             verbose("skipping getStudyUpdates");
             return null;
         }
         return given()
                 .param("studyId", vars.get("studyId"))
-                .param("studyVersion", vars.get("studyVersion"))
+                .param("studyVersion", defaultString(vars.get("studyVersion"),"1.0"))
             .when()
                 .get("/studyUpdates")// NOTE documentation typo
             .then()
@@ -307,11 +306,10 @@ public class TestWCP
         // contactUs
         //TODO
 
-        // NOTE: app and appVersion need to be provided in stresstest.properties for this method
-        getAppUpdates(true);
+        // NOTE: applicationId needs to be provided in stresstest.properties for this method
+        getAppUpdates(false);
 
-        // NOTE: studyVersion need to be provided in stresstest.properties for this method
-        getStudyUpdates(true);
+        getStudyUpdates(false);
 
         System.out.println("apiTest: passed");
     }
