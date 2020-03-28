@@ -1,7 +1,8 @@
 apply plugin: 'java'
 apply plugin: 'application'
 
-mainClassName = 'stresstest.Main'
+//mainClassName = 'stresstest.Main'
+mainClassName = 'stresstest.MailHelper'
 
 repositories {
     mavenCentral()
@@ -12,6 +13,8 @@ dependencies {
     implementation 'io.rest-assured:rest-assured:4.3.0'
     runtime 'io.rest-assured:json-schema-validator:4.3.0'
     implementation 'io.rest-assured:json-schema-validator:4.3.0'
+    compile group: 'javax.mail', name: 'javax.mail-api', version: '1.4.7'
+    implementation group: 'javax.mail', name: 'mail', version: '1.4.7'
 }
 
 jar {

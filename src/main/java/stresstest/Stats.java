@@ -23,6 +23,6 @@ public class Stats
     {
         if (count ==  0)
             return name + ": count=0";
-        return name + ": count=" + count + " avg=" + (total/count) + " min=" + min + " max=" + max;
+        return name + ": count=" + count + " avg=" + Math.round(total/count) + " min=" + min + " max=" + max;
     }
 }
