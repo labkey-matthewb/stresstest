@@ -1,17 +1,12 @@
 package stresstest;
 
-import io.restassured.response.ValidatableResponse;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Properties;
-import java.util.Scanner;
+import java.util.*;
 
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static org.hamcrest.Matchers.equalTo;
@@ -20,7 +15,7 @@ public class Main
 {
 	static final File stressTestProperties = new File("stresstest.properties");
 
-	static Properties getProperties(boolean interactive)
+	static Map<String,String> getProperties(boolean interactive)
 	{
  		try
 		{
@@ -41,7 +36,10 @@ public class Main
 				}
 				props.store(new FileWriter(stressTestProperties),"");
 			}
-			return props;
+			var ret = new TreeMap<String,String>();
+			for (Map.Entry<Object, Object> e : props.entrySet())
+				ret.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+			return ret;
 		}
  		catch(IOException io)
 		{
@@ -79,14 +77,14 @@ public class Main
 			.body("email", equalTo(expected));
 	}
 
-	public void run(Properties properties)
+	public void run(Map<String,String> properties)
 	{
 		RestSession s1 = RestSession.createLabKeySession(properties);
 		RestSession s2 = RestSession.createLabKeySession(properties);
 		checkLabKeyEmail(s1, "guest");
 		checkLabKeyEmail(s2, "guest");
-		labkeyLogin(s1, properties.getProperty("email"), properties.getProperty("password"));
-		checkLabKeyEmail(s1, properties.getProperty("email"));
+		labkeyLogin(s1, properties.get("email"), properties.get("password"));
+		checkLabKeyEmail(s1, properties.get("email"));
 		checkLabKeyEmail(s2, "guest");
 		labkeyLogout(s1);
 		checkLabKeyEmail(s1, "guest");
@@ -94,9 +92,16 @@ public class Main
 		System.out.println("SUCCESSS!");
 	}
 
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
-		Properties properties = getProperties(true);
-		new TestWCP(properties).run();
+		Map<String,String> properties = getProperties(false);
+
+		Map<String,String> wcpProperties = new TreeMap<>(properties);
+		properties.forEach((k,v) -> {if (StringUtils.startsWith(String.valueOf(k),"wcp.")) wcpProperties.put(String.valueOf(k).substring(4),String.valueOf(v));});
+		new TestWCP(wcpProperties).run();
+
+		Map<String,String> regProperties = new TreeMap<>(properties);
+		properties.forEach((k,v) -> {if (StringUtils.startsWith(String.valueOf(k),"reg.")) regProperties.put(String.valueOf(k).substring(4),String.valueOf(v));});
+		new TestReg(wcpProperties).run();
 	}
 }

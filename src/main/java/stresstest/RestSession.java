@@ -36,21 +36,21 @@ public class RestSession
     final String basePath;
     final ArrayList<Filter> filters = new ArrayList<Filter>();
 
-    private RestSession(Properties props)
+    private RestSession(Map<String,String> props)
     {
-        baseURI = props.getProperty("baseURI", "http://localhost");
-        port = Integer.parseInt(props.getProperty("port", "8080"));
-        basePath = props.getProperty("basePath", "");
+        baseURI = defaultString(props.get("baseURI"), "http://localhost");
+        port = Integer.parseInt(defaultString(props.get("port"), baseURI.startsWith("https:")?"443":"8080"));
+        basePath = defaultString(props.get("basePath"), "");
         filters.add(new SessionFilter());
         System.err.println("URI: " + baseURI + ":" + port + basePath);
     }
 
-    public static RestSession createSession(Properties props)
+    public static RestSession createSession(Map<String,String> props)
     {
         return new RestSession(props);
     }
 
-    public static RestSession createLabKeySession(Properties props)
+    public static RestSession createLabKeySession(Map<String,String> props)
     {
         if (!props.containsKey("basePath"))
             props.put("basePath", "/labkey");
@@ -59,17 +59,16 @@ public class RestSession
         return s;
     }
 
-    public static RestSession createBasicAuth(Properties props, String username_, String password_)
+    public static RestSession createBasicAuth(Map<String,String> props, String username_, String password_)
     {
-        final String username = defaultString(username_, props.getProperty("username"));
-        final String password = defaultString(password_, props.getProperty("password"));
+        final String username = defaultString(username_, props.get("username"));
+        final String password = defaultString(password_, props.get("password"));
         final Header header = new Header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8)));
         return new RestSession(props)
         {
             @Override
             public RequestSpecification given()
             {
-//                return super.given().auth().basic(username,password);
                 return super.given().header(header);
             }
         };

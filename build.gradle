@@ -1,8 +1,8 @@
 apply plugin: 'java'
 apply plugin: 'application'
 
-//mainClassName = 'stresstest.Main'
-mainClassName = 'stresstest.MailHelper'
+mainClassName = 'stresstest.Main'
+//mainClassName = 'stresstest.MailHelper'
 
 repositories {
     mavenCentral()

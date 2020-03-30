@@ -6,7 +6,6 @@ import io.restassured.specification.RequestSpecification;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -19,12 +18,10 @@ public class TestWCP
     final RestSession s;
     final HashMap<String,String> vars = new HashMap<>();
 
-    public TestWCP(Properties props)
+    public TestWCP(Map<String,String> props)
     {
-        s = RestSession.createBasicAuth(props, null, null);
-        // convert to map
-        for (Map.Entry<Object, Object> e : props.entrySet())
-            vars.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+        vars.putAll(props);
+        s = RestSession.createBasicAuth(vars, null, null);
     }
 
     RequestSpecification given()
