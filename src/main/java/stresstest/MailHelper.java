@@ -10,6 +10,8 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.apache.commons.lang3.StringUtils.defaultString;
+
 public class MailHelper implements AutoCloseable
 {
     final String host;
@@ -24,13 +26,13 @@ public class MailHelper implements AutoCloseable
     // pop.host
     // pop.user
     // pop.password
-    MailHelper(Properties props) throws MessagingException
+    public MailHelper(Map<String,String> props) throws MessagingException
     {
-        host = props.getProperty("imap.host");
-        username = props.getProperty("imap.username");
-        port = Integer.parseInt(props.getProperty("imap.port", "993"));
-        folder = props.getProperty("imap.folder", "inbox");
-        password = props.getProperty("imap.password");
+        host = props.get("imap.host");
+        username = props.get("imap.username");
+        port = Integer.parseInt(defaultString(props.get("imap.port"), "993"));
+        folder = defaultString(props.get("imap.folder"), "inbox");
+        password = props.get("imap.password");
         System.err.println(new URLName("imaps", host, port, folder, username, "****"));
 
         // from java doc: It is expected that the client supplies values for the properties listed in Appendix A of the JavaMail spec (particularly mail.store.protocol, mail.transport.protocol, mail.host, mail.user, and mail.from) as the defaults are unlikely to work in all cases.
@@ -53,7 +55,7 @@ public class MailHelper implements AutoCloseable
             store.close();
     }
 
-    Collection<Message> find(String email, long timeout, Predicate<Message> predicate) throws MessagingException
+    public List<Message> find(String email, long timeout, Predicate<Message> predicate) throws MessagingException
     {
         InternetAddress address = new InternetAddress(email);
 
@@ -69,7 +71,7 @@ public class MailHelper implements AutoCloseable
         do
         {
             Message[] messages = inbox.search(searchTerm);
-            Collection<Message> ret = Arrays.asList(messages);
+            List<Message> ret = Arrays.asList(messages);
             if (null != predicate && !ret.isEmpty())
             {
                 ret = ret.stream().filter(predicate).collect(Collectors.toList());
@@ -83,7 +85,7 @@ public class MailHelper implements AutoCloseable
 
 
     // <MimeType,String>
-    static Map.Entry<String,String> getMessageContent(Message message, String preferMimeType) throws MessagingException, IOException
+    public static Map.Entry<String,String> getMessageContent(Message message, String preferMimeType) throws MessagingException, IOException
     {
         Object content = message.getContent();
         if (content instanceof Multipart)
@@ -108,10 +110,13 @@ public class MailHelper implements AutoCloseable
 
     public static void main(String[] args) throws Exception
     {
-        Properties props = new Properties();
-        props.load(new FileReader(new File("stresstest.properties")));
+        Properties properties = new Properties();
+        properties.load(new FileReader(new File("stresstest.properties")));
+        Map<String,String> props = new TreeMap<>();
+        for (Map.Entry<Object, Object> e : properties.entrySet())
+            props.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
 
-        String email = props.getProperty("imap.username");
+        String email = props.get("imap.username");
         int at = email.indexOf("@");
         String testEmail = email.substring(0,at) + "+test" + email.substring(at);
         System.out.println("recipient email: " + testEmail);

@@ -17,10 +17,17 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import stresstest.json.JSONArray;
 import stresstest.json.JSONObject;
+
+import javax.mail.Message;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -46,7 +53,9 @@ public class TestReg
     private String userId = null;
     private String participantId = UUID.randomUUID().toString();
 
-    public TestReg(Map<String,String> props)
+    private final MailHelper mailHelper;
+
+    public TestReg(Map<String,String> props) throws Exception
     {
         baseURI  = defaultString(props.get("baseURI"), "https://hpreg-stage.lkcompliant.net");
         basePath = "";
@@ -58,6 +67,8 @@ public class TestReg
 
         appId = defaultString(props.get("applicationId"), "FMSA001");
         studyId = defaultString(props.get("studyId"), "Arthritis001");
+
+        mailHelper = new MailHelper(props);
     }
 
     public void run() throws Exception
@@ -157,10 +168,17 @@ public class TestReg
         }
     }
 
-    private String getVerificationCode()
+    private String getVerificationCode() throws Exception
     {
-        String verificationCode = "";
-        return verificationCode;
+        List<Message> messages = mailHelper.find(email, 60_000, null);
+        // assume there's only one such message for now
+        Message message = messages.get(0);
+        var content = MailHelper.getMessageContent(message, "text/plain");
+        assertThat(content, equalTo("text/plain"));
+        Matcher match = Pattern.compile("\\s\\*Verification Code:\\*\\s*(\\w\\w\\w\\w\\w\\w)\\s").matcher(content.getValue());
+        boolean found = match.find();
+        assertThat(found, is(true));
+        return match.group(1);
     }
 
     private HttpGet getHttpGet(String endpoint)
