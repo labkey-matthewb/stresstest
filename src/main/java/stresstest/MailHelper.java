@@ -55,17 +55,17 @@ public class MailHelper implements AutoCloseable
             store.close();
     }
 
-    public List<Message> find(String email, long timeout, Predicate<Message> predicate) throws MessagingException
+    public List<Message> find(String to, String from, long timeout, Predicate<Message> predicate) throws MessagingException
     {
-        InternetAddress address = new InternetAddress(email);
-
         if (!inbox.isOpen())
             inbox.open(Folder.READ_ONLY);
 
-        Flags seen = new Flags(Flags.Flag.SEEN);
-        FlagTerm unseenFlagTerm = new FlagTerm(seen, false);
-        AddressTerm addressTerm = new RecipientTerm(Message.RecipientType.TO, address);
-        AndTerm searchTerm = new AndTerm(addressTerm, unseenFlagTerm);
+//        SearchTerm searchTerm = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
+//        if (null != to)
+//            searchTerm = new AndTerm(searchTerm, new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to)));
+        SearchTerm searchTerm = new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to));
+        if (null != from)
+            searchTerm = new AndTerm(searchTerm, new FromTerm(new InternetAddress(from)));
 
         long start = System.currentTimeMillis();
         do
@@ -78,6 +78,7 @@ public class MailHelper implements AutoCloseable
             }
             if (!ret.isEmpty())
                 return ret;
+            try {Thread.sleep(500);} catch(InterruptedException x) {/*pass*/}
         } while (start + timeout > System.currentTimeMillis());
 
         throw new SearchException("message not found");
@@ -105,7 +106,7 @@ public class MailHelper implements AutoCloseable
                 return new AbstractMap.SimpleEntry<>("text/html", html.toString());
             return new AbstractMap.SimpleEntry<>("text/plain", plain.toString());
         }
-        return new AbstractMap.SimpleEntry<>("text/plain", content.toString());
+        return new AbstractMap.SimpleEntry<>(message.isMimeType("text/html")?"text/html":"text/plain", content.toString());
     }
 
     public static void main(String[] args) throws Exception
@@ -123,7 +124,7 @@ public class MailHelper implements AutoCloseable
 
         try (MailHelper mh = new MailHelper(props))
         {
-            var results = mh.find(testEmail, 60_000, null);
+            var results = mh.find(testEmail, null, 60_000, null);
             for (Message message : results)
             {
                 System.out.println(results);

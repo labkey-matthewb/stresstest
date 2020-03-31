@@ -80,6 +80,7 @@ public class TestReg
                 execute(httpclient, httpGet);
             }
 
+            // CONSIDER: option to save away registration or create new
             JSONObject registerJson;
             {
                 HttpPost register = getHttpPost("register.api", Map.of("emailId", email, "password", password));
@@ -170,12 +171,13 @@ public class TestReg
 
     private String getVerificationCode() throws Exception
     {
-        List<Message> messages = mailHelper.find(email, 60_000, null);
+        List<Message> messages = mailHelper.find(email, "FDAMyStudiesReg@mystudiesapp.org", 60_000, null);
         // assume there's only one such message for now
         Message message = messages.get(0);
-        var content = MailHelper.getMessageContent(message, "text/plain");
-        assertThat(content, equalTo("text/plain"));
-        Matcher match = Pattern.compile("\\s\\*Verification Code:\\*\\s*(\\w\\w\\w\\w\\w\\w)\\s").matcher(content.getValue());
+        var content = MailHelper.getMessageContent(message, "text/html");
+        assertThat(content.getKey(), equalTo("text/html"));
+        Matcher match = Pattern.compile("<span>\\s*<strong>\\s*Verification\\s+Code:\\s*</strong>\\s*(\\w\\w\\w\\w\\w\\w)\\s*</span>").matcher(content.getValue());
+
         boolean found = match.find();
         assertThat(found, is(true));
         return match.group(1);

@@ -102,6 +102,6 @@ public class Main
 
 		Map<String,String> regProperties = new TreeMap<>(properties);
 		properties.forEach((k,v) -> {if (StringUtils.startsWith(String.valueOf(k),"reg.")) regProperties.put(String.valueOf(k).substring(4),String.valueOf(v));});
-		new TestReg(wcpProperties).run();
+		new TestReg(regProperties).run();
 	}
 }
