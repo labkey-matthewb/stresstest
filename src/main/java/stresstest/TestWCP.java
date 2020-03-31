@@ -1,5 +1,7 @@
 package stresstest;
 
+import io.restassured.filter.log.RequestLoggingFilter;
+import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -11,6 +13,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 import static org.apache.commons.lang3.StringUtils.*;
+import static org.hamcrest.Matchers.equalTo;
 
 public class TestWCP
 {
@@ -26,12 +29,12 @@ public class TestWCP
 
     RequestSpecification given()
     {
-        return s.given();
+        return s.given().log().ifValidationFails();
     }
 
     RequestSpecification when()
     {
-        return s.given().when();
+        return given().when();
     }
 
 
@@ -51,6 +54,7 @@ public class TestWCP
                 .get("/gatewayInfo")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -72,6 +76,7 @@ public class TestWCP
                 .get("/studyList")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
 
         // if we don't have a studyId grab a random
@@ -106,6 +111,7 @@ public class TestWCP
                 .get("/eligibilityConsent")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
 
         String consentVersion = ret.body().jsonPath().getString("consent.version");
@@ -135,6 +141,7 @@ public class TestWCP
                 .get("/consentDocument")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -151,6 +158,7 @@ public class TestWCP
                 .get("/resources")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -168,6 +176,7 @@ public class TestWCP
                 .get("/studyInfo")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -179,6 +188,7 @@ public class TestWCP
                 .get("/activityList")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
 
         if (isBlank(vars.get("activityId")) || isBlank(vars.get("activityVersion")))
@@ -210,6 +220,7 @@ public class TestWCP
                 .get("/activity")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -227,6 +238,7 @@ public class TestWCP
                 .get("/studyDashboard")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -237,6 +249,7 @@ public class TestWCP
                 .get("/termsPolicy")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -248,6 +261,7 @@ public class TestWCP
                 .get("/notifications")
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -265,6 +279,7 @@ public class TestWCP
                 .get("/appUpdates")
             .then()
                 .statusCode(200)
+//                .body("message", equalTo("SUCCESS"))  // BUG?? message==""
             .extract();
     }
 
@@ -282,6 +297,7 @@ public class TestWCP
                 .get("/studyUpdates")// NOTE documentation typo
             .then()
                 .statusCode(200)
+                .body("message", equalTo("SUCCESS"))
             .extract();
     }
 
@@ -341,7 +357,7 @@ public class TestWCP
             var res = fn.apply(true);
             if (null != res)
                 stats.update(res.time());
-            return null;
+            return res;
         }
     }
 
@@ -370,9 +386,15 @@ public class TestWCP
         long pauseTime = 10;
         int callCount = 0;
         var r = new Random();
-        for (int i=0 ; i<count ; i++)
+        for (int i=0 ; i<count ; )
         {
-            apis[r.nextInt(apis.length)].call();
+            var ret = apis[r.nextInt(apis.length)].call();
+            if (null != ret)
+            {
+                i++;
+                if (i%10==0)
+                    verbose("" + i);
+            }
         }
 
         long callTime = (System.currentTimeMillis() - start - (pauseTime - callCount));
@@ -387,7 +409,7 @@ public class TestWCP
         try
         {
             apiTest();
-            randomApiTest(100);
+            randomApiTest(200);
             System.out.println("TestWCP: success");
         }
         catch (Exception x)
