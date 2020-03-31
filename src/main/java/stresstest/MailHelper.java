@@ -55,22 +55,37 @@ public class MailHelper implements AutoCloseable
             store.close();
     }
 
+
+    SearchTerm and(SearchTerm a, SearchTerm b)
+    {
+        if (null == a)
+            return b;
+        if (null == b)
+            return a;
+        return new AndTerm(a,b);
+    }
+
+
     public List<Message> find(String to, String from, long timeout, Predicate<Message> predicate) throws MessagingException
     {
         if (!inbox.isOpen())
             inbox.open(Folder.READ_ONLY);
 
-//        SearchTerm searchTerm = new FlagTerm(new Flags(Flags.Flag.SEEN), false);
-//        if (null != to)
-//            searchTerm = new AndTerm(searchTerm, new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to)));
-        SearchTerm searchTerm = new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to));
+        SearchTerm searchTerm = null;
+//      searchTerm = and(searchTerm, new FlagTerm(new Flags(Flags.Flag.SEEN), false));
+//      searchTerm = and(searchTerm, new ReceivedDateTerm(ComparisonTerm.GT, new Date(System.currentTimeMillis()-60*60*1000));
+        if (null != to)
+            searchTerm = and(searchTerm, new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to)));
         if (null != from)
-            searchTerm = new AndTerm(searchTerm, new FromTerm(new InternetAddress(from)));
+            searchTerm = and(searchTerm, new FromTerm(new InternetAddress(from)));
 
         long start = System.currentTimeMillis();
         do
         {
-            Message[] messages = inbox.search(searchTerm);
+            try {Thread.sleep(2000);} catch(InterruptedException x) {/*pass*/}
+            Message[] messages = searchTerm == null ?
+                    inbox.getMessages() :
+                    inbox.search(searchTerm);
             List<Message> ret = Arrays.asList(messages);
             if (null != predicate && !ret.isEmpty())
             {
@@ -78,7 +93,6 @@ public class MailHelper implements AutoCloseable
             }
             if (!ret.isEmpty())
                 return ret;
-            try {Thread.sleep(500);} catch(InterruptedException x) {/*pass*/}
         } while (start + timeout > System.currentTimeMillis());
 
         throw new SearchException("message not found");

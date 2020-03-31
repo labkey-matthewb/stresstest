@@ -98,7 +98,7 @@ public class Main
 
 		Map<String,String> wcpProperties = new TreeMap<>(properties);
 		properties.forEach((k,v) -> {if (StringUtils.startsWith(String.valueOf(k),"wcp.")) wcpProperties.put(String.valueOf(k).substring(4),String.valueOf(v));});
-		new TestWCP(wcpProperties).run();
+//		new TestWCP(wcpProperties).run();
 
 		Map<String,String> regProperties = new TreeMap<>(properties);
 		properties.forEach((k,v) -> {if (StringUtils.startsWith(String.valueOf(k),"reg.")) regProperties.put(String.valueOf(k).substring(4),String.valueOf(v));});

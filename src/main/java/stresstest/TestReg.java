@@ -22,21 +22,21 @@ import javax.mail.Message;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
 
 public class TestReg
 {
+    private final Map<String,String> props;
+
     private final String baseURI;
     private final String basePath;
     private final int port;
@@ -46,8 +46,8 @@ public class TestReg
     private final String appId;
     private final String studyId;
 
-    private final String email;
-    private final String password;
+    private String email;
+    private String password;
 
     private String auth = null;
     private String userId = null;
@@ -55,8 +55,18 @@ public class TestReg
 
     private final MailHelper mailHelper;
 
+
+    private static final boolean verbose = true;
+    void verbose(String v)
+    {
+        if (verbose)
+            System.out.println(v);
+    }
+
+
     public TestReg(Map<String,String> props) throws Exception
     {
+        this.props = props;
         baseURI  = defaultString(props.get("baseURI"), "https://hpreg-stage.lkcompliant.net");
         basePath = "";
         port = Integer.parseInt(defaultString(props.get("port"), "443"));
@@ -71,6 +81,47 @@ public class TestReg
         mailHelper = new MailHelper(props);
     }
 
+    static final Random rand = new Random();
+
+    String randString()
+    {
+        StringBuilder s = new StringBuilder();
+        while (s.length() < 6)
+        {
+            int r = rand.nextInt(54);
+            int ch;
+            if (r < 10)
+                ch = 48 + r;
+            else
+            {
+                r -= 10;
+                if (r < 26)
+                    ch = 65 + r;
+                else
+                {
+                    r -= 26;
+                    ch = 97 + r;
+                }
+            }
+            s.append((char)ch);
+        }
+        return s.toString();
+    }
+
+    Map.Entry<String,String> generateEmailPassword(String baseEmail)
+    {
+        int at = baseEmail.indexOf('@');
+        assertThat(at, greaterThan(0));
+        String name = baseEmail.substring(0,at);
+        String domain = baseEmail.substring(at);
+        if (-1 != name.indexOf('+'))
+            name = name.substring(0,name.indexOf('+'));
+        return new AbstractMap.SimpleEntry<>(
+            name + "+" + randString().toLowerCase() + domain,
+            randString()
+        );
+    }
+
     public void run() throws Exception
     {
         try (CloseableHttpClient httpclient = HttpClients.createDefault())
@@ -81,24 +132,41 @@ public class TestReg
             }
 
             // CONSIDER: option to save away registration or create new
-            JSONObject registerJson;
+            JSONObject registerJson = null;
+            boolean newRegistration = true;
+            if (newRegistration)
             {
+                if (isBlank(email) || isBlank(password))
+                {
+                    var userpass = generateEmailPassword(defaultString(email, props.get("imap.username")));
+                    if (isBlank(email))
+                        email = userpass.getKey();
+                    if (isBlank(password))
+                        password = userpass.getValue();
+                }
+                verbose("REGISTER " + email);
                 HttpPost register = getHttpPost("register.api", Map.of("emailId", email, "password", password));
                 registerJson = execute(httpclient, register);
-            }
 
-            // TODO: Need to send verification code back to /verify API before invoking any other APIs
-            {
+                // TODO: Need to send verification code back to /verify API before invoking any other APIs
                 // For now, get verification code by magic
                 String verification = getVerificationCode();
-
                 HttpPost verify = getHttpPost("verify.api", Map.of("emailId", email, "code", verification));
                 execute(httpclient, verify);
             }
 
             // Now set auth and userId; these headers are needed for all subsequent calls
-            auth = (String)registerJson.get("auth");
-            userId = (String)registerJson.get("userId");
+            if (null != registerJson)
+            {
+                auth = (String) registerJson.get("auth");
+                userId = (String) registerJson.get("userId");
+            }
+            else
+            {
+                auth = props.get("auth");
+                userId = props.get("userId");
+            }
+            verbose("auth=" + auth + " userId=" + userId);
 
             {
                 HttpGet userProfile = getHttpGet("confirmRegistration.api");
@@ -171,7 +239,9 @@ public class TestReg
 
     private String getVerificationCode() throws Exception
     {
-        List<Message> messages = mailHelper.find(email, "FDAMyStudiesReg@mystudiesapp.org", 60_000, null);
+        verbose("FIND to:"+email + " from:" + "FDAMyStudiesReg@mystudiesapp.org");
+//        List<Message> messages = mailHelper.find(email, "FDAMyStudiesReg@mystudiesapp.org", 2*60_000, null);
+        List<Message> messages = mailHelper.find(email, null, 2*60_000, null);
         // assume there's only one such message for now
         Message message = messages.get(0);
         var content = MailHelper.getMessageContent(message, "text/html");
