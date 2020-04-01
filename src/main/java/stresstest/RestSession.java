@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.commons.lang3.StringUtils.defaultString;
@@ -67,9 +66,9 @@ public class RestSession
         return new RestSession(props)
         {
             @Override
-            public RequestSpecification given()
+            public RequestSpecification given(Stats stats)
             {
-                return super.given().header(header);
+                return super.given(stats).header(header);
             }
         };
     }
@@ -83,7 +82,7 @@ public class RestSession
         return given(null);
     }
 
-    public RequestSpecification given()
+    public final RequestSpecification given()
     {
         return given(null);
     }

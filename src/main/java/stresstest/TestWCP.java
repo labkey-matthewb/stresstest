@@ -1,7 +1,5 @@
 package stresstest;
 
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -10,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 import static org.apache.commons.lang3.StringUtils.*;
 import static org.hamcrest.Matchers.equalTo;
@@ -27,16 +25,10 @@ public class TestWCP
         s = RestSession.createBasicAuth(vars, null, null);
     }
 
-    RequestSpecification given()
+    RequestSpecification given(Stats stats)
     {
-        return s.given().log().ifValidationFails();
+        return s.given(stats).log().ifValidationFails();
     }
-
-    RequestSpecification when()
-    {
-        return given().when();
-    }
-
 
     void verbose(String v)
     {
@@ -48,9 +40,9 @@ public class TestWCP
     // silent parameter is used to silently skip test without required vars
     // useful for calling APIs in random order
 
-    private ExtractableResponse<Response> getGatewayAppResourcesInfo(boolean silent)
+    private ExtractableResponse<Response> getGatewayAppResourcesInfo(Stats stats, boolean silent)
     {
-        return when()
+        return given(stats)
                 .get("/gatewayInfo")
             .then()
                 .statusCode(200)
@@ -58,7 +50,7 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getStudyList(boolean silent)
+    private ExtractableResponse<Response> getStudyList(Stats stats, boolean silent)
     {
         if (silent)
         {
@@ -69,7 +61,7 @@ public class TestWCP
                 return null;
             }
         }
-        final var ret = given()
+        final var ret = given(stats)
                 .header("applicationId",vars.get("applicationId"))
                 .header("orgId",vars.get("orgId"))
             .when()
@@ -103,9 +95,9 @@ public class TestWCP
         return ret;
     }
 
-    private ExtractableResponse<Response> getEligibilityConsentMetadata(boolean silent)
+    private ExtractableResponse<Response> getEligibilityConsentMetadata(Stats stats, boolean silent)
     {
-        final var ret = given()
+        final var ret = given(stats)
                 .param("studyId",vars.get("studyId"))
             .when()
                 .get("/eligibilityConsent")
@@ -124,7 +116,7 @@ public class TestWCP
         return ret;
     }
 
-    private ExtractableResponse<Response> getConsentDocument(boolean silent)
+    private ExtractableResponse<Response> getConsentDocument(Stats stats, boolean silent)
     {
         if (silent)
         {
@@ -134,7 +126,7 @@ public class TestWCP
                 return null;
             }
         }
-        return given()
+        return given(stats)
                 .param("studyId",vars.get("studyId"))
                 .param("consentVersion",vars.get("consentVersion"))
             .when()
@@ -145,14 +137,14 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getResourcesForStudy(boolean silent)
+    private ExtractableResponse<Response> getResourcesForStudy(Stats stats, boolean silent)
     {
         if (silent && isBlank(vars.get("studyId")))
         {
             verbose("skipping getResourcesForStudy");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("studyId",vars.get("studyId"))
             .when()
                 .get("/resources")
@@ -163,14 +155,14 @@ public class TestWCP
     }
 
 
-    private ExtractableResponse<Response> getStudyInfo(boolean silent)
+    private ExtractableResponse<Response> getStudyInfo(Stats stats, boolean silent)
     {
         if (silent && isBlank(vars.get("studyId")))
         {
             verbose("skipping getResourcesForStudy");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("studyId", vars.get("studyId"))
             .when()
                 .get("/studyInfo")
@@ -180,9 +172,9 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getActivityList(boolean silent)
+    private ExtractableResponse<Response> getActivityList(Stats stats, boolean silent)
     {
-        var ret = given()
+        var ret = given(stats)
                 .param("studyId",vars.get("studyId"))
             .when()
                 .get("/activityList")
@@ -205,14 +197,14 @@ public class TestWCP
     }
 
 
-    private ExtractableResponse<Response> getStudyActivityMetadata(boolean silent)
+    private ExtractableResponse<Response> getStudyActivityMetadata(Stats stats, boolean silent)
     {
         if (silent && (isBlank(vars.get("studyId")) || isBlank(vars.get("activityId")) || isBlank(vars.get("activityVersion"))))
         {
             verbose("skipping getStudyActivityMetadata");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("studyId", vars.get("studyId"))
                 .param("activityId", vars.get("activityId"))
                 .param("activityVersion", vars.get("activityVersion"))
@@ -225,14 +217,14 @@ public class TestWCP
     }
 
 
-    private ExtractableResponse<Response> getStudyDashboardInfo(boolean silent)
+    private ExtractableResponse<Response> getStudyDashboardInfo(Stats stats, boolean silent)
     {
         if (silent && isBlank(vars.get("studyId")))
         {
             verbose("skipping getStudyDashboardInfo");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("studyId", vars.get("studyId"))
             .when()
                 .get("/studyDashboard")
@@ -243,9 +235,9 @@ public class TestWCP
     }
 
 
-    private ExtractableResponse<Response> getTermsPolicy(boolean silent)
+    private ExtractableResponse<Response> getTermsPolicy(Stats stats, boolean silent)
     {
-        return when()
+        return given(stats).when()
                 .get("/termsPolicy")
             .then()
                 .statusCode(200)
@@ -253,9 +245,9 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getNotifications(boolean silent)
+    private ExtractableResponse<Response> getNotifications(Stats stats, boolean silent)
     {
-        return given()
+        return given(stats)
                 .param("skip", "0")
             .when()
                 .get("/notifications")
@@ -265,14 +257,14 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getAppUpdates(boolean silent)
+    private ExtractableResponse<Response> getAppUpdates(Stats stats, boolean silent)
     {
         if (silent && isBlank(vars.get("applicationId")))
         {
             verbose("skipping getAppUpdates");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("app", vars.get("applicationId"))
                 .param("appVersion", defaultString(vars.get("appVersion"),"1.0"))
             .when()
@@ -283,14 +275,14 @@ public class TestWCP
             .extract();
     }
 
-    private ExtractableResponse<Response> getStudyUpdates(boolean silent)
+    private ExtractableResponse<Response> getStudyUpdates(Stats stats, boolean silent)
     {
         if (silent && isBlank(vars.get("studyId")))
         {
             verbose("skipping getStudyUpdates");
             return null;
         }
-        return given()
+        return given(stats)
                 .param("studyId", vars.get("studyId"))
                 .param("studyVersion", defaultString(vars.get("studyVersion"),"1.0"))
             .when()
@@ -303,27 +295,27 @@ public class TestWCP
 
     public void apiTest()
     {
-        getGatewayAppResourcesInfo(false);
+        getGatewayAppResourcesInfo(null, false);
 
-        getStudyList(false);
+        getStudyList(null, false);
 
-        getResourcesForStudy(false);
+        getResourcesForStudy(null, false);
 
-        getStudyInfo(false);
+        getStudyInfo(null, false);
 
-        getEligibilityConsentMetadata(false);
+        getEligibilityConsentMetadata(null, false);
 
-        getActivityList(false);
+        getActivityList(null, false);
 
-        getConsentDocument(false);
+        getConsentDocument(null, false);
 
-        getStudyActivityMetadata(false);
+        getStudyActivityMetadata(null, false);
 
-        getStudyDashboardInfo(false);
+        getStudyDashboardInfo(null, false);
 
-        getTermsPolicy(false);
+        getTermsPolicy(null, false);
 
-        getNotifications(false);
+        getNotifications(null, false);
 
         // feedback
         //TODO
@@ -332,32 +324,29 @@ public class TestWCP
         //TODO
 
         // NOTE: applicationId needs to be provided in stresstest.properties for this method
-        getAppUpdates(false);
+        getAppUpdates(null, false);
 
-        getStudyUpdates(false);
+        getStudyUpdates(null, false);
 
         System.out.println("apiTest: passed");
     }
 
     // custom class because the generics are out of control
-    private class StatsWrapper implements Callable
+    private static class StatsWrapper implements Callable<ExtractableResponse<Response>>
     {
-        final Function<Boolean,ExtractableResponse<Response>> fn;
+        final BiFunction<Stats,Boolean,ExtractableResponse<Response>> fn;
         final Stats stats;
 
-        StatsWrapper(Function<Boolean,ExtractableResponse<Response>> fn, String name)
+        StatsWrapper(BiFunction<Stats,Boolean,ExtractableResponse<Response>> fn, String name)
         {
             this.fn = fn;
             this.stats = new Stats(name);
         }
 
         @Override
-        public Object call() throws Exception
+        public ExtractableResponse<Response> call()
         {
-            var res = fn.apply(true);
-            if (null != res)
-                stats.update(res.time());
-            return res;
+            return fn.apply(stats,true);
         }
     }
 
@@ -409,7 +398,7 @@ public class TestWCP
         try
         {
             apiTest();
-            randomApiTest(200);
+            randomApiTest(10);
             System.out.println("TestWCP: success");
         }
         catch (Exception x)
