@@ -80,18 +80,26 @@ public class RestSession
 
     public RequestSpecification with()
     {
-        return given();
+        return given(null);
     }
 
     public RequestSpecification given()
+    {
+        return given(null);
+    }
+
+    public RequestSpecification given(Stats stats)
     {
         RestAssured.baseURI = baseURI;
         RestAssured.port = port;
         RestAssured.basePath = basePath;
         RestAssured.config().getSessionConfig().sessionIdName("JSESSIONID"); // default actually
 
-        var request = new RequestSpecificationWrapper(RestAssured.given());
+//        var request = new RequestSpecificationWrapper(RestAssured.given());
+        var request = RestAssured.given();
         request.filters(filters);
+        if (null != stats)
+            request.filters((req,res,ctx) -> {var ret = ctx.next(req,res); stats.update(ret.time()); return ret;});
         // for verbose logging
         //request.filters(new RequestLoggingFilter(), new ResponseLoggingFilter());
         return request;
