@@ -122,13 +122,24 @@ public class TestReg
         );
     }
 
-    public void run() throws Exception
+
+    static Stats pingStats = new Stats("ping");
+    static Stats registerStats = new Stats("register");
+    static Stats verifyStats = new Stats("verify");
+    static Stats confirmStats = new Stats("confirm");
+    static Stats userProfileStats = new Stats("userProfile");
+    static Stats studyStateStats = new Stats("studyState");
+    static Stats updateStudyStateStats = new Stats("updateStudyState");
+    static Stats updateEligibilityConsentStatusStats = new Stats("updateEligibilityConsentStatus");
+
+
+    public void basicTest() throws Exception
     {
         try (CloseableHttpClient httpclient = HttpClients.createDefault())
         {
             {
                 HttpGet httpGet = new HttpGet(base + "/" + methodPrefix + "ping.api");
-                execute(httpclient, httpGet);
+                execute(pingStats, httpclient, httpGet);
             }
 
             // CONSIDER: option to save away registration or create new
@@ -146,13 +157,13 @@ public class TestReg
                 }
                 verbose("REGISTER " + email);
                 HttpPost register = getHttpPost("register.api", Map.of("emailId", email, "password", password));
-                registerJson = execute(httpclient, register);
+                registerJson = execute(registerStats, httpclient, register);
 
                 // TODO: Need to send verification code back to /verify API before invoking any other APIs
                 // For now, get verification code by magic
                 String verification = getVerificationCode();
                 HttpPost verify = getHttpPost("verify.api", Map.of("emailId", email, "code", verification));
-                execute(httpclient, verify);
+                execute(verifyStats, httpclient, verify);
             }
 
             // Now set auth and userId; these headers are needed for all subsequent calls
@@ -170,18 +181,18 @@ public class TestReg
 
             {
                 HttpGet userProfile = getHttpGet("confirmRegistration.api");
-                JSONObject json = execute(httpclient, userProfile);
+                JSONObject json = execute(confirmStats, httpclient, userProfile);
                 assertThat(json.getBoolean("verified"), is(true));
             }
 
             {
                 HttpGet userProfile = getHttpGet("userProfile.api");
-                execute(httpclient, userProfile);
+                execute(userProfileStats, httpclient, userProfile);
             }
 
             {
                 HttpGet studyState = getHttpGet("studyState.api");
-                JSONObject response = execute(httpclient, studyState);
+                JSONObject response = execute(studyStateStats, httpclient, studyState);
                 assertThat(response.getJSONArray("studies").length(), is(0));
             }
 
@@ -197,12 +208,12 @@ public class TestReg
                 ))));
                 HttpPost updateStudyState = getHttpPost("updateStudyState.api", Map.of());
                 updateStudyState.setEntity(new StringEntity(json.toString(), ContentType.APPLICATION_JSON));
-                execute(httpclient, updateStudyState);
+                execute(updateStudyStateStats, httpclient, updateStudyState);
             }
 
             {
                 HttpGet studyState = getHttpGet("studyState.api");
-                JSONObject response = execute(httpclient, studyState);
+                JSONObject response = execute(studyStateStats, httpclient, studyState);
                 JSONArray studies = response.getJSONArray("studies");
                 assertThat(studies.length(), is(1));
                 JSONObject study = (JSONObject)studies.get(0);
@@ -211,7 +222,7 @@ public class TestReg
             }
 
             {
-                String pdf = Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("/temp/consent.pdf")));
+                String pdf = Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("consent.pdf")));
                 JSONObject consent = new JSONObject();
                 consent.put("version", "1.0");
                 consent.put("status", "completed");
@@ -226,12 +237,12 @@ public class TestReg
                 HttpPost updateConsent = getHttpPost("updateEligibilityConsentStatus.api", Map.of());
                 StringEntity entity = new StringEntity(params.toString(), ContentType.APPLICATION_JSON);
                 updateConsent.setEntity(entity);
-                execute(httpclient, updateConsent);
+                execute(updateEligibilityConsentStatusStats, httpclient, updateConsent);
             }
 
             {
                 HttpGet studyState = getHttpGet("studyState.api");
-                JSONObject response = execute(httpclient, studyState);
+                JSONObject response = execute(studyStateStats, httpclient, studyState);
                 assertThat(response.getJSONArray("studies").length(), is(1));
             }
         }
@@ -283,7 +294,13 @@ public class TestReg
         if (null != userId)
             request.addHeader("userId", userId);
 
+        verbose("email:" + email + " password:" + password + " applicationId:"+appId + " orgId:OrgId " + " auth:" + auth + " userId:" + userId);
         return request;
+    }
+
+    private JSONObject execute(Stats stats, CloseableHttpClient httpClient, HttpUriRequest request) throws Exception
+    {
+        return stats.time(() -> execute(httpClient, request));
     }
 
     private JSONObject execute(CloseableHttpClient httpClient, HttpUriRequest request) throws Exception
@@ -314,6 +331,29 @@ public class TestReg
                 System.out.println(message);
                 throw new Exception(message);
             }
+        }
+    }
+
+
+    void run() throws Exception
+    {
+        try
+        {
+            for (int i=0 ; i<5 ; i++)
+            {
+                basicTest();
+                // reset for loop
+                email = null;
+                password = null;
+                auth = null;
+                userId = null;
+            }
+        }
+        finally
+        {
+            Arrays.asList(pingStats, registerStats, verifyStats, confirmStats, userProfileStats, studyStateStats, updateStudyStateStats, updateEligibilityConsentStatusStats).forEach(stats ->
+                    System.err.println(stats)
+            );
         }
     }
 }

@@ -89,7 +89,7 @@ public class Main
 		labkeyLogout(s1);
 		checkLabKeyEmail(s1, "guest");
 		checkLabKeyEmail(s2, "guest");
-		System.out.println("SUCCESSS!");
+		System.out.println("SUCCESS!");
 	}
 
 	public static void main(String[] args) throws Exception

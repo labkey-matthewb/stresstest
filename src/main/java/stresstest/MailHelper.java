@@ -76,16 +76,18 @@ public class MailHelper implements AutoCloseable
 //      searchTerm = and(searchTerm, new ReceivedDateTerm(ComparisonTerm.GT, new Date(System.currentTimeMillis()-60*60*1000));
         if (null != to)
             searchTerm = and(searchTerm, new RecipientTerm(Message.RecipientType.TO, new InternetAddress(to)));
-        if (null != from)
-            searchTerm = and(searchTerm, new FromTerm(new InternetAddress(from)));
+//        if (null != from)
+//            searchTerm = and(searchTerm, new FromTerm(new InternetAddress(from)));
 
         long start = System.currentTimeMillis();
         do
         {
             try {Thread.sleep(2000);} catch(InterruptedException x) {/*pass*/}
-            Message[] messages = searchTerm == null ?
+            System.err.println("getMessageCount()=" + inbox.getMessageCount());
+            Message[] messages = null==searchTerm ?
                     inbox.getMessages() :
                     inbox.search(searchTerm);
+            System.err.println("search().length=" + messages.length);
             List<Message> ret = Arrays.asList(messages);
             if (null != predicate && !ret.isEmpty())
             {
